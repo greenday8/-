@@ -92,8 +92,8 @@
   <header class="api-header">
     <h1>🌐 청소년 국제통상 뉴스 AI</h1>
     <div class="api-input-group">
-      <input type="password" id="groqKey" placeholder="GROQ API Key 입력...">
-      <button onclick="saveApiKeyAndFetch()">실시간 업데이트</button>
+      <input type="password" id="groqKey" placeholder="개별 API Key (선택사항)...">
+      <button onclick="saveApiKeyAndFetch()">키 변경 및 업데이트</button>
     </div>
   </header>
 
@@ -117,7 +117,7 @@
   <div id="adminModal" class="admin-modal">
     <div class="admin-content">
       <div class="admin-header">
-        <h4>📊 사용자 피드백 목록</h4>
+        <h4>📊 이 기기에서 수집된 피드백</h4>
         <div>
           <button onclick="clearFeedbacks()" style="background:#ef4444; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:0.78rem; cursor:pointer;">초기화</button>
           <button onclick="toggleAdminModal()" style="background:#475569; color:white; border:none; padding:4px 10px; border-radius:6px; font-size:0.78rem; cursor:pointer; margin-left:4px;">닫기</button>
@@ -141,6 +141,12 @@
   </div>
 
   <script>
+    // 1. 공용 기본 GROQ API 키 설정 (다른 기기에서 접속해도 입력 없이 동작하도록 내장)
+    const DEFAULT_GROQ_KEY = "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"; 
+
+    // 2. 이메일 전송용 Web3Forms 무료 키 (선택사항: https://web3forms.com 에서 이메일만 넣으면 1초만에 발급 가능)
+    const WEB3FORMS_ACCESS_KEY = "YOUR_WEB3FORMS_ACCESS_KEY";
+
     let newsDataStore = [];
     let selectedRating = "";
     let currentNewsTitle = "";
@@ -154,20 +160,18 @@
     };
 
     window.onload = function() {
-      const savedKey = localStorage.getItem('groq_key');
-      if (savedKey) {
+      const savedKey = localStorage.getItem('groq_key') || DEFAULT_GROQ_KEY;
+      if (savedKey && savedKey !== DEFAULT_GROQ_KEY) {
         document.getElementById('groqKey').value = savedKey;
-        fetchLatestNews(savedKey);
-      } else {
-        fetchFallbackNews();
       }
+      fetchLatestNews(savedKey);
     };
 
     function saveApiKeyAndFetch() {
-      const key = document.getElementById('groqKey').value.trim();
-      if (!key) { alert('API Key를 입력해주세요.'); return; }
-      localStorage.setItem('groq_key', key);
-      fetchLatestNews(key);
+      const inputKey = document.getElementById('groqKey').value.trim();
+      const keyToUse = inputKey || DEFAULT_GROQ_KEY;
+      if (inputKey) localStorage.setItem('groq_key', inputKey);
+      fetchLatestNews(keyToUse);
     }
 
     async function fetchLatestNews(apiKey) {
@@ -177,7 +181,7 @@
 
       const now = new Date();
       const todayStr = now.toISOString().split('T')[0];
-      const randomSeed = now.getTime(); // 매일 새로운 뉴스 생성을 위한 시드
+      const randomSeed = now.getTime();
 
       document.getElementById('subDateTitle').innerText = `접속 날짜: ${todayStr} (오늘 기준 최근 7일 이내 뉴스 실시간 생성)`;
 
@@ -298,8 +302,6 @@ Output MUST be strictly valid JSON:
 
       const keyword = news.searchKeyword || news.title;
       const encodedKeyword = encodeURIComponent(keyword);
-
-      // 구글 I'm Feeling Lucky(&btnI=I) 파라미터를 사용해 검색창을 거치지 않고 가장 정확한 1위 기사/보도자료 웹페이지로 자동 이동
       const directArticleUrl = `https://www.google.com/search?q=${encodedKeyword}&btnI=I`;
 
       const container = document.getElementById('detailContainer');
@@ -367,7 +369,7 @@ Output MUST be strictly valid JSON:
       selectedRating = rating;
     }
 
-    function submitFeedback() {
+    async function submitFeedback() {
       if (!selectedRating) { alert('평가를 선택해주세요.'); return; }
       const comment = document.getElementById('feedbackComment').value.trim();
       const feedbackObj = {
@@ -377,11 +379,27 @@ Output MUST be strictly valid JSON:
         comment: comment || "의견 없음"
       };
 
+      // 1. 현재 기기 브라우저에 local 저장
       const existing = JSON.parse(localStorage.getItem('user_feedbacks') || '[]');
       existing.unshift(feedbackObj);
       localStorage.setItem('user_feedbacks', JSON.stringify(existing));
 
-      alert('피드백이 전송되었습니다.');
+      // 2. Web3Forms 키가 설정되어 있다면 관리자 이메일로 자동 전송
+      if (WEB3FORMS_ACCESS_KEY && WEB3FORMS_ACCESS_KEY !== "YOUR_WEB3FORMS_ACCESS_KEY") {
+        try {
+          await fetch("https://api.web3forms.com/submit", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              access_key: WEB3FORMS_ACCESS_KEY,
+              subject: `[통상 뉴스 피드백] ${currentNewsTitle}`,
+              message: `평가: ${selectedRating}\n의견: ${comment || '의견 없음'}\n일시: ${feedbackObj.date}`
+            })
+          });
+        } catch(e) { console.error("피드백 전송 실패:", e); }
+      }
+
+      alert('피드백이 성공적으로 제출되었습니다.');
       document.getElementById('feedbackComment').value = "";
     }
 
@@ -399,7 +417,7 @@ Output MUST be strictly valid JSON:
       const container = document.getElementById('feedbackList');
       const feedbacks = JSON.parse(localStorage.getItem('user_feedbacks') || '[]');
       if (feedbacks.length === 0) {
-        container.innerHTML = '<p style="font-size:0.85rem; color:#94a3b8; text-align:center;">등록된 피드백이 없습니다.</p>';
+        container.innerHTML = '<p style="font-size:0.85rem; color:#94a3b8; text-align:center;">이 기기에서 작성된 피드백이 없습니다.</p>';
         return;
       }
       container.innerHTML = feedbacks.map(f => `
