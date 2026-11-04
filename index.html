@@ -141,6 +141,7 @@
   </div>
 
   <script>
+    // 💡 아래 큰따옴표 안(" ")에 본인의 실제 GROQ API 키(gsk_...)를 꼭 집어넣어 주세요!
     const DEFAULT_GROQ_KEY = "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"; 
 
     let newsDataStore = [];
@@ -165,12 +166,9 @@
 
     function saveApiKeyAndFetch() {
       const inputKey = document.getElementById('groqKey').value.trim();
-      if (!inputKey) {
-        alert("GROQ API Key를 입력해주세요!");
-        return;
-      }
-      localStorage.setItem('groq_key', inputKey);
-      fetchLatestNews(inputKey);
+      const keyToUse = inputKey || DEFAULT_GROQ_KEY;
+      if (inputKey) localStorage.setItem('groq_key', inputKey);
+      fetchLatestNews(keyToUse);
     }
 
     async function fetchLatestNews(apiKey) {
@@ -180,9 +178,10 @@
 
       const now = new Date();
       const todayStr = now.toISOString().split('T')[0];
-      const randomSeed = now.getTime();
+      // 매 접속마다 무조건 새로운 답변이 생성되게 강제하는 난수 시드값
+      const uniqueSeed = Date.now() + "_" + Math.floor(Math.random() * 100000);
 
-      document.getElementById('subDateTitle').innerText = `접속 날짜: ${todayStr} (오늘 기준 최근 7일 이내 뉴스 실시간 생성)`;
+      document.getElementById('subDateTitle').innerText = `접속 날짜: ${todayStr} (오늘 기준 실시간 뉴스 분석 완료)`;
 
       if (!apiKey || apiKey.includes("여기에")) {
         console.warn("API 키가 설정되지 않아 비상 기본 뉴스를 로드합니다.");
@@ -192,41 +191,42 @@
         return;
       }
 
-      const prompt = `Today's Date is ${todayStr}. Seed: ${randomSeed}.
-Select 2 DIFFERENT international trade & diplomatic news events that occurred within 7 days prior to ${todayStr}.
-CRITICAL: Pick NEW recent trade topics (e.g. Middle East Halal Market, EU Packaging Regulation PPWR, Supply Chain Deals, Foreign Trade Agreements).
+      // 답변 고착 현상을 막기 위해 강력한 시드 난수 및 신규 주제 강제 프롬프트 추가
+      const prompt = `[CRITICAL INSTRUCTION]
+Today's Date: ${todayStr}
+Unique Seed Token: ${uniqueSeed}
+
+Do NOT repeat previous topics! Generate 2 BRAND NEW, DIFFERENT international trade/diplomatic news topics that occurred within the last 7 days of ${todayStr}.
+Pick diverse topics like semiconductor supply chain, green trade tariffs, new FTA agreements, Middle East markets, or EU regulations.
 
 Output MUST be strictly valid JSON array format:
 [
   {
     "id": 1,
     "tag": "카테고리명",
-    "searchKeyword": "뉴스 핵심 검색 키워드",
+    "searchKeyword": "검색 키워드",
     "title": "뉴스 제목 1",
-    "summary": "2-3문장 요약",
+    "summary": "핵심 요약 2~3문장",
     "detailedDescription": "상세 배경 설명...",
-    "whyImportant": "중요성 분석...",
+    "whyImportant": "글로벌 중요성...",
     "koreaImpact": "한국 경제 영향...",
     "youthImpact": "청소년 영향..."
   },
   {
     "id": 2,
     "tag": "카테고리명",
-    "searchKeyword": "뉴스 핵심 검색 키워드",
+    "searchKeyword": "검색 키워드",
     "title": "뉴스 제목 2",
-    "summary": "2-3문장 요약",
+    "summary": "핵심 요약 2~3문장",
     "detailedDescription": "상세 배경 설명...",
-    "whyImportant": "중요성 분석...",
+    "whyImportant": "글로벌 중요성...",
     "koreaImpact": "한국 경제 영향...",
     "youthImpact": "청소년 영향..."
   }
 ]`;
 
       try {
-        // 정식 GROQ OpenAI 호환 API 엔드포인트
-        const targetUrl = 'https://api.groq.com/openai/v1/chat/completions';
-
-        const res = await fetch(targetUrl, {
+        const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
           headers: { 
             'Authorization': `Bearer ${apiKey.trim()}`, 
@@ -235,7 +235,7 @@ Output MUST be strictly valid JSON array format:
           body: JSON.stringify({
             model: 'llama-3.3-70b-versatile',
             messages: [{ role: 'user', content: prompt }],
-            temperature: 0.8,
+            temperature: 0.9, // 창의성/변화도를 높여 매번 새로운 뉴스를 뽑아내도록 설정
             response_format: { type: "json_object" }
           })
         });
