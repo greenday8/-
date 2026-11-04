@@ -141,7 +141,7 @@
   </div>
 
   <script>
-    // 💡 아래 큰따옴표 안(" ")에 본인의 실제 GROQ API 키(gsk_...)를 꼭 집어넣어 주세요!
+    // 🔑 GROQ API 키 기본 내장
     const DEFAULT_GROQ_KEY = "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"; 
 
     let newsDataStore = [];
@@ -158,7 +158,7 @@
 
     window.onload = function() {
       const savedKey = localStorage.getItem('groq_key') || DEFAULT_GROQ_KEY;
-      if (savedKey && !savedKey.includes("여기에")) {
+      if (savedKey) {
         document.getElementById('groqKey').value = savedKey;
       }
       fetchLatestNews(savedKey);
@@ -178,33 +178,23 @@
 
       const now = new Date();
       const todayStr = now.toISOString().split('T')[0];
-      // 매 접속마다 무조건 새로운 답변이 생성되게 강제하는 난수 시드값
-      const uniqueSeed = Date.now() + "_" + Math.floor(Math.random() * 100000);
+      const uniqueSeed = Date.now() + "_" + Math.floor(Math.random() * 1000000);
 
-      document.getElementById('subDateTitle').innerText = `접속 날짜: ${todayStr} (오늘 기준 실시간 뉴스 분석 완료)`;
+      document.getElementById('subDateTitle').innerText = `접속 날짜: ${todayStr} (오늘 기준 실시간 최신 이슈 분석 완료)`;
 
-      if (!apiKey || apiKey.includes("여기에")) {
-        console.warn("API 키가 설정되지 않아 비상 기본 뉴스를 로드합니다.");
-        fetchFallbackNews();
-        document.getElementById('loadingBox').style.display = 'none';
-        document.getElementById('cardGrid').style.display = 'grid';
-        return;
-      }
-
-      // 답변 고착 현상을 막기 위해 강력한 시드 난수 및 신규 주제 강제 프롬프트 추가
       const prompt = `[CRITICAL INSTRUCTION]
 Today's Date: ${todayStr}
 Unique Seed Token: ${uniqueSeed}
 
-Do NOT repeat previous topics! Generate 2 BRAND NEW, DIFFERENT international trade/diplomatic news topics that occurred within the last 7 days of ${todayStr}.
-Pick diverse topics like semiconductor supply chain, green trade tariffs, new FTA agreements, Middle East markets, or EU regulations.
+Generate 2 BRAND NEW, DIFFERENT real-world international trade/diplomatic news topics that occurred recently.
+Select topics like semiconductor supply chains, green tariffs, MSP mineral agreements, or AI trade regulations.
 
 Output MUST be strictly valid JSON array format:
 [
   {
     "id": 1,
     "tag": "카테고리명",
-    "searchKeyword": "검색 키워드",
+    "searchKeyword": "뉴스 핵심 검색 키워드",
     "title": "뉴스 제목 1",
     "summary": "핵심 요약 2~3문장",
     "detailedDescription": "상세 배경 설명...",
@@ -215,7 +205,7 @@ Output MUST be strictly valid JSON array format:
   {
     "id": 2,
     "tag": "카테고리명",
-    "searchKeyword": "검색 키워드",
+    "searchKeyword": "뉴스 핵심 검색 키워드",
     "title": "뉴스 제목 2",
     "summary": "핵심 요약 2~3문장",
     "detailedDescription": "상세 배경 설명...",
@@ -235,7 +225,7 @@ Output MUST be strictly valid JSON array format:
           body: JSON.stringify({
             model: 'llama-3.3-70b-versatile',
             messages: [{ role: 'user', content: prompt }],
-            temperature: 0.9, // 창의성/변화도를 높여 매번 새로운 뉴스를 뽑아내도록 설정
+            temperature: 0.9,
             response_format: { type: "json_object" }
           })
         });
@@ -268,29 +258,30 @@ Output MUST be strictly valid JSON array format:
       }
     }
 
+    // 💡 최신 반도체 및 핵심광물 통상 이슈로 업데이트된 기본 뉴스
     function fetchFallbackNews() {
       newsDataStore = [
         {
           id: 1,
-          tag: "중동 시장 & 글로벌 통상",
-          searchKeyword: "한국무역협회 할랄 인증 지원",
-          title: "🕌 한국 기업, 중동 'K-할랄' 시장 진출 확대 및 업무협약 체결",
-          summary: "한국무역협회를 비롯한 주요 통상 기관들이 중동 및 유럽 할랄 인증 시장 진출을 위한 통합 지원 체계를 가동했습니다.",
-          detailedDescription: "최근 중동 및 이슬람권 국가를 중심으로 K-푸드와 K-뷰티 수요가 늘어나면서, 엄격한 <span class=\"term\" onclick=\"openModal('할랄')\">할랄</span> 규격을 충족하는 무역 통상 지원이 핵심 화두로 떠올랐습니다. 무역 유관기관들은 국내 기업들이 해외 인허가 장벽을 넘을 수 있도록 인증 비용 및 마케팅을 다각도로 지원하고 있습니다.",
-          whyImportant: "특정 국가나 단일 품목에 치우친 수출 구조에서 벗어나 20억 인구의 거대한 할랄 시장으로 수출 판로를 다변화하는 계기가 됩니다.",
-          koreaImpact: "식품, 화장품, 바이오 등 중소·중견기업의 수출 흑자 폭 확대에 기여하며 새로운 성장 동력을 확보하게 됩니다.",
-          youthImpact: "글로벌 문화 특성을 반영한 국제 마케팅 및 다국적 통상 전문가에 대한 청소년들의 관심과 직업적 가치가 올라갑니다."
+          tag: "반도체 & 글로벌 공급망",
+          searchKeyword: "산업통상자원부 미국 반도체법 공급망",
+          title: "🇺🇸 미국 반도체법(Chips Act) 재편과 글로벌 반도체 공급망 요동",
+          summary: "미국 정부가 자국 내 반도체 공장 유치를 위한 지원 조건을 강화함에 따라, 우리나라 대표 반도체 기업들의 대미 투자 전략 및 글로벌 공급망 재편이 본격화되고 있습니다.",
+          detailedDescription: "최근 미국은 반도체 자국 생산 비율을 높이기 위해 대규모 보조금을 지급하는 정책을 추진하고 있습니다. 이에 따라 한국의 삼성전자, SK하이닉스 등 첨단 반도체 기업들은 미국 내 공장 건설 규모를 조정하며 보조금 요건과 대중국 반도체 장비 수출 규제 사이에서 전략적 균형을 찾기 위해 분주히 움직이고 있습니다.",
+          whyImportant: "반도체는 AI, 자율주행, 스마트폰 등 미래 첨단 산업의 핵심 원자재로, 단순한 기술 제품을 넘어 국가 안보와 직결된 안보 자산이 되었습니다.",
+          koreaImpact: "한국 경제의 가장 큰 수출 비중을 차지하는 반도체 산업의 수익성과 글로벌 시장 점유율에 직접적인 영향을 미칩니다.",
+          youthImpact: "미래 AI 시대의 핵심 인재로서 반도체 공학, 국제통상, 공급망 관리 분야의 직업적 중요성과 가치가 크게 높아집니다."
         },
         {
           id: 2,
-          tag: "EU 규제 & 친환경 통상",
-          searchKeyword: "산업통상자원부 EU 포장재 규제 PPWR",
-          title: "🇪🇺 유럽연합(EU) 포장재 및 포장폐기물 규정(PPWR) 대응 비상",
-          summary: "유럽연합이 수출 제품의 포장재 재활용 의무화 기준을 강력히 재정립함에 따라 국내 수출 기업들의 대응이 시작되었습니다.",
-          detailedDescription: "유럽연합의 <span class=\"term\" onclick=\"openModal('PPWR')\">PPWR</span> 규정은 유럽으로 들어오는 모든 상품의 포장재를 재활용 가능한 소재로 제한하는 친환경 무역 장벽입니다. 규정을 준수하지 못할 경우 유럽 내 유통이 제한되거나 막대한 환경 세금이 부과되어 기업들의 글로벌 <span class=\"term\" onclick=\"openModal('공급망')\">공급망</span> 관리가 필수가 되었습니다.",
-          whyImportant: "단순히 좋은 물건을 만드는 것을 넘어, 제품의 포장 및 폐기 과정 전체가 무역의 주요 통상 기준이 되는 패러다임 변화입니다.",
-          koreaImpact: "국내 제조 및 유통업체들이 친환경 포장 소재 개발에 투자를 늘려야 하는 부담과 동시에 친환경 기술력을 입증할 기회가 됩니다.",
-          youthImpact: "미래 직업 시장에서 ESG 경영 및 친환경 패키징 엔지니어 등 기후 변화와 무역이 결합된 분야의 인재 수요가 대폭 늘어납니다."
+          tag: "자원 안보 & 친환경 통상",
+          searchKeyword: "산업통상자원부 핵심광물안보파트너십 공급망",
+          title: "🔋 핵심 광물 안보 파트너십(MSP) 강화와 전기차 배터리 무역 재편",
+          summary: "전기차와 이차전지 제조에 필수적인 리튬, 니켈 등 핵심 광물의 특정국 의존도를 낮추기 위해 한국과 주요국들이 다자간 광물 공급망 협력을 대폭 강화했습니다.",
+          detailedDescription: "세계 각국이 친환경 전기차 전환을 서두르는 가운데, 배터리의 핵심 원자재인 리튬·니켈·코발트 등의 자원 무기화 우려가 커졌습니다. 이에 따라 한국은 미국, EU, 주요 자원국들과 손잡고 핵심 광물의 공급처를 다변화하고 무역 장벽을 낮추는 글로벌 광물 안보 파트너십을 적극 활용하고 있습니다.",
+          whyImportant: "기후 위기 대응을 위한 탄소중립 정책과 친환경 에너지 전환의 성패를 가르는 글로벌 자원 통상 이슈입니다.",
+          koreaImpact: "K-배터리 기업들이 안정적인 원자재 수급 경로를 확보하여 글로벌 시장 경쟁력을 유지할 수 있는 기틀이 됩니다.",
+          youthImpact: "친환경 기술, 자원 안보, ESG 경영 등 기후 변화와 무역이 결합된 신산업 분야의 진로 선택지가 넓어집니다."
         }
       ];
       renderCards(newsDataStore);
